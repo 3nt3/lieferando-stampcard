@@ -1,5 +1,4 @@
 #![feature(let_chains)]
-
 #![macro_use]
 extern crate tokio;
 
@@ -88,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
     let login_button = page.query_selector("button[type='submit']").await?.unwrap();
     login_button.click_builder().click().await?;
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
     // check if there is an input with "sicherheitscode" as placeholder
     let security_code_input = page
@@ -121,11 +120,37 @@ async fn main() -> anyhow::Result<()> {
         submit_button.click_builder().click().await?;
     }
 
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
     page.goto_builder("https://www.lieferando.de/lieferservice/essen/haan-42781#stempelkarten")
         .goto()
         .await?;
 
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+
+    // extract info from stamp cards
+    let stampcards = page.query_selector_all("[data-qa='stamp-card']").await?;
+    for stampcard in stampcards {
+        let img = stampcard.query_selector("img").await?.unwrap();
+        let restaurant_name = img.get_attribute("alt").await?.unwrap();
+
+        let only_n_left = stampcard
+            .query_selector("[data-qa='stamps-to-go-text']")
+            .await?;
+        if let Some(only_n_left) = only_n_left {
+            let only_n_left = only_n_left.inner_text().await?;
+            println!("{}: {}", restaurant_name, only_n_left);
+        } else {
+            let copy_voucher_code_button = stampcard
+                .query_selector("[data-qa='reveal-and-copy-voucher-button']")
+                .await?
+                .unwrap();
+            let voucher_text = copy_voucher_code_button.inner_text().await?;
+            println!("{}: {} voucher available", restaurant_name, voucher_text);
+        }
+
+        dbg!(restaurant_name);
+    }
 
     Ok(())
 }
