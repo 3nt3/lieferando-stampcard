@@ -808,6 +808,7 @@ name = "lieferando-stampcard"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "imap",
  "native-tls",
  "playwright",

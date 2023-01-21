@@ -1,13 +1,15 @@
-#[macro_use]
+#![feature(let_chains)]
+
+#![macro_use]
 extern crate tokio;
+
+use scraper::{Html, Selector};
+use std::fs;
 
 use playwright::Playwright;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dbg!(fetch_inbox_top()?);
-    return Ok(());
-
     let playwright = Playwright::initialize().await?;
     playwright.prepare()?;
 
@@ -92,10 +94,29 @@ async fn main() -> anyhow::Result<()> {
     let security_code_input = page
         .query_selector("input[placeholder='Sicherheitscode']")
         .await?;
-    if let Some(input) = security_code_input {
+
+    let mut last: Option<String> = None;
+    for _ in 0..5 {
+        if security_code_input.is_none() {
+            break;
+        }
+        let otp = extract_otp_from_email(&fetch_inbox_top()?.unwrap())?.unwrap();
+        println!("otp: {otp}");
+        if let Some(last_otp) = last {
+            if last_otp != otp {
+                last = Some(otp);
+                break;
+            }
+        }
+        last = Some(otp);
+
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    }
+
+    if let Some(input) = security_code_input && let Some(otp) = last {
         println!("security code input found");
         input.click_builder().click().await?;
-        input.type_builder("123456").r#type().await?;
+        input.type_builder(&otp).r#type().await?;
         let submit_button = page.query_selector("button[type='submit']").await?.unwrap();
         submit_button.click_builder().click().await?;
     }
@@ -110,6 +131,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn fetch_inbox_top() -> imap::error::Result<Option<String>> {
+    println!("connecting to gmail...");
     let domain = "imap.gmail.com";
     let tls = native_tls::TlsConnector::builder().build().unwrap();
 
@@ -126,9 +148,18 @@ fn fetch_inbox_top() -> imap::error::Result<Option<String>> {
     // we want to fetch the first email in the INBOX mailbox
     imap_session.select("INBOX")?;
 
+    // chrono get date in format 01-Jan-2021
+    let now = chrono::Utc::now();
+    let date = now.format("%d-%b-%Y");
+
+    let command = format!(
+        "SUBJECT \"Dein Lieferando.de Sicherheitscode zum Einloggen.\" SINCE \"{}\"",
+        &date.to_string()
+    );
+    println!("searching for messages...");
+
     // find messages with relevant subject
-    let message_ids =
-        imap_session.search("SUBJECT \"Dein Lieferando.de Sicherheitscode zum Einloggen.\"")?;
+    let message_ids = imap_session.search(command)?;
     let message_ids = message_ids.iter();
 
     // sort messages by date
@@ -150,9 +181,28 @@ fn fetch_inbox_top() -> imap::error::Result<Option<String>> {
     return match message {
         None => Ok(None),
         Some(message) => {
+            println!("found a message!");
             let message = message.body().unwrap();
             let message = String::from_utf8_lossy(message);
             Ok(Some(message.to_string()))
         }
     };
+}
+
+fn extract_otp_from_email(email: &str) -> anyhow::Result<Option<String>> {
+    // Some(otp.to_string())
+    // find strong element
+    let document = Html::parse_document(email);
+    let selector = Selector::parse("strong");
+    if let Err(why) = selector {
+        eprintln!("error parsing: {why}");
+        return Err(anyhow::anyhow!("error parsing: {why}"));
+    }
+    let selector = selector.unwrap();
+    let mut otp: Option<String> = None;
+    let element = document.select(&selector).next();
+    if let Some(element) = element {
+        otp = Some(element.text().collect());
+    }
+    Ok(otp)
 }
