@@ -5,6 +5,8 @@ Scrapes lieferando for stampcards
 ## Example `config.toml`
 
 ```toml
+headless = false # doesn't work when true for some reason
+
 [lieferando]
 email = "asdf@asdf.com"
 password = "whatever"
