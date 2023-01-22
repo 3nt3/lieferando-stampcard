@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let context = browser.context_builder().build().await?;
     // login
     let page = context.new_page().await?;
-    println!("go to lieferando");
+    // println!("go to lieferando");
     page.goto_builder("https://www.lieferando.de/")
         .goto()
         .await?;
@@ -64,9 +64,9 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    println!("loggin in");
+    // println!("loggin in");
     // find input with placeholder "E-Mail"
     let email_input = page
         .query_selector("input[placeholder='E-Mail-Adresse']")
@@ -95,7 +95,7 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    println!("getting otp");
+    // println!("getting otp");
 
     // check if there is an input with "sicherheitscode" as placeholder
     let security_code_input = page
@@ -113,12 +113,12 @@ async fn main() -> anyhow::Result<()> {
             &config.email.password,
         )?;
         if email.is_none() {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             continue;
         }
         let email = email.unwrap();
         let otp = extract_otp_from_email(&email)?.unwrap();
-        println!("otp: {otp}");
+        // println!("otp: {otp}");
         if let Some(last_otp) = last {
             if last_otp != otp {
                 last = Some(otp);
@@ -127,25 +127,25 @@ async fn main() -> anyhow::Result<()> {
         }
         last = Some(otp);
 
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 
     if let Some(input) = security_code_input && let Some(otp) = last {
-        println!("security code input found");
+        // println!("security code input found");
         input.click_builder().click().await?;
         input.type_builder(&otp).r#type().await?;
         let submit_button = page.query_selector("button[type='submit']").await?.unwrap();
         submit_button.click_builder().click().await?;
     }
 
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    println!("logged in, getting stamp cards");
+    // println!("logged in, getting stamp cards");
     page.goto_builder("https://www.lieferando.de/lieferservice/essen/haan-42781#stempelkarten")
         .goto()
         .await?;
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
     // extract info from stamp cards
     let mut pizza_royal = 0;
@@ -208,7 +208,7 @@ fn fetch_inbox_top(
     let username = username.as_ref();
     let password = password.as_ref();
 
-    println!("connecting to {server}...");
+    // println!("connecting to {server}...");
     let tls = native_tls::TlsConnector::builder().build().unwrap();
 
     // we pass in the domain twice to check that the server's TLS
@@ -230,7 +230,7 @@ fn fetch_inbox_top(
         "SUBJECT \"Dein Lieferando.de Sicherheitscode zum Einloggen.\" SINCE \"{}\"",
         &date.to_string()
     );
-    println!("searching for messages...");
+    // println!("searching for messages...");
 
     // find messages with relevant subject
     let message_ids = imap_session.search(command)?;
@@ -255,7 +255,7 @@ fn fetch_inbox_top(
     return match message {
         None => Ok(None),
         Some(message) => {
-            println!("found a message!");
+            // println!("found a message!");
             let message = message.body().unwrap();
             let message = String::from_utf8_lossy(message);
             Ok(Some(message.to_string()))
