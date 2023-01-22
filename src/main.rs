@@ -156,7 +156,7 @@ async fn main() -> anyhow::Result<()> {
         let img = stampcard.query_selector("img").await?.unwrap();
         let restaurant_name = img.get_attribute("alt").await?.unwrap();
 
-        if restaurant_name != "Pizza Royal" {
+        if restaurant_name != config.lieferando.restaurant_name {
             continue;
         }
 

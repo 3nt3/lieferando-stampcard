@@ -1,6 +1,6 @@
 # lieferando-stampcard
 
-Scrapes lieferando for Pizza Royal stampcards
+Scrapes lieferando for stampcards
 
 ## Example `config.toml`
 
@@ -8,6 +8,7 @@ Scrapes lieferando for Pizza Royal stampcards
 [lieferando]
 email = "asdf@asdf.com"
 password = "whatever"
+restaurant_name = "Pizza Royal"
 
 [email]
 server = "imap.gmail.com"

@@ -10,6 +10,7 @@ pub struct Config {
 pub struct Lieferando {
     pub email: String,
     pub password: String,
+    pub restaurant_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
