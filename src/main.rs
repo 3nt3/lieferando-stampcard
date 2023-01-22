@@ -6,6 +6,8 @@ use regex::Regex;
 use scraper::{Html, Selector};
 use std::fs;
 
+use std::path::PathBuf;
+
 mod config;
 
 use playwright::Playwright;
@@ -23,21 +25,26 @@ async fn main() -> anyhow::Result<()> {
         .headless(config.headless)
         .launch()
         .await?;
-    let context = browser.context_builder().build().await?;
+    let context = browser.context_builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36")
+        .build().await?;
     // login
     let page = context.new_page().await?;
-    page.set_viewport_size(playwright::api::Viewport { width: 1920, height: 1080 }).await?;
+    page.set_viewport_size(playwright::api::Viewport {
+        width: 1920,
+        height: 1080,
+    })
+    .await?;
     // println!("go to lieferando");
     page.goto_builder("https://www.lieferando.de/")
         .goto()
         .await?;
 
-    // wait for the page to load
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
     // accept cookies
     let accept_cookies = page
-        .query_selector("[aria-label='Alle Cookies akzeptieren']")
+        .wait_for_selector_builder("[aria-label='Alle Cookies akzeptieren']")
+        .timeout(100000.0)
+        .wait_for_selector()
         .await?;
     if let Some(accept_cookies) = accept_cookies {
         accept_cookies.click_builder().click().await?;
@@ -114,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
             &config.email.password,
         )?;
         if email.is_none() {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             continue;
         }
         let email = email.unwrap();
@@ -128,7 +135,7 @@ async fn main() -> anyhow::Result<()> {
         }
         last = Some(otp);
 
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
     if let Some(input) = security_code_input && let Some(otp) = last {
@@ -251,14 +258,21 @@ fn fetch_inbox_top(
     // fetch everything about that message
     let messages = imap_session.fetch(last.to_string(), "RFC822")?;
     let message = messages.iter().next();
-    imap_session.logout()?;
 
     return match message {
-        None => Ok(None),
+        None => {
+            imap_session.logout()?;
+            Ok(None)
+        },
         Some(message) => {
             // println!("found a message!");
+            // move message to folder
+            imap_session.mv(last.to_string(), "[Gmail]/Trash")?;
+
             let message = message.body().unwrap();
             let message = String::from_utf8_lossy(message);
+            imap_session.logout()?;
+
             Ok(Some(message.to_string()))
         }
     };
