@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub lieferando: Lieferando,
     pub email: Email,
+    pub headless: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

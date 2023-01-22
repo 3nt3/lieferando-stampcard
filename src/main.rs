@@ -20,12 +20,13 @@ async fn main() -> anyhow::Result<()> {
     let browser = playwright
         .chromium()
         .launcher()
-        .headless(false)
+        .headless(config.headless)
         .launch()
         .await?;
     let context = browser.context_builder().build().await?;
     // login
     let page = context.new_page().await?;
+    page.set_viewport_size(playwright::api::Viewport { width: 1920, height: 1080 }).await?;
     // println!("go to lieferando");
     page.goto_builder("https://www.lieferando.de/")
         .goto()
